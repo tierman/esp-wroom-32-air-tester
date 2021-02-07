@@ -3,9 +3,12 @@ Small air tester based on esp-wroom-32 with sensor: CJMCU-8118, PMSA003, and dis
 
 ## External libraries:
 * https://github.com/adafruit/Adafruit_CCS811
+* https://github.com/maarten-pennings/CCS811
 * https://github.com/adafruit/Adafruit-GFX-Library.git
 * https://github.com/adafruit/Adafruit_SSD1306.git
 * https://github.com/closedcube/ClosedCube_HDC1080_Arduino.git
+* https://github.com/avaldebe/PMserial.git
+* https://github.com/plerup/espsoftwareserial.git
 
 ## Electric configuration
 * TP-4056 charger
