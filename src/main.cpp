@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_CCS811.h>
 #include <Wire.h>
 #include <ClosedCube_HDC1080.h>
 #include "ccs811.h"
@@ -17,9 +18,9 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //Adafruit_CCS811 gasSensor;
 ClosedCube_HDC1080 tempHumiditiSensor;
-CCS811 ccs811(GPIO_NUM_26); // nWAKE on GPIO_NUM_26
-SoftwareSerial Serial11(GPIO_NUM_17, GPIO_NUM_16);
-//SerialPM pms(PMSA003, GPIO_NUM_17, GPIO_NUM_16);
+//CCS811 ccs811(-1); // nWAKE on GPIO_NUM_26
+//SoftwareSerial Serial11(GPIO_NUM_17, GPIO_NUM_16);
+SerialPM pms(PMSA003, GPIO_NUM_17, GPIO_NUM_27);
 
 void initDisplay();
 void initGasSensor();
@@ -27,6 +28,8 @@ void blinkOnBoardLed(int count);
 void initTempHumiditiSensor();
 void printRegister(HDC1080_Registers reg);
 void ccs811Read();
+void pmsa003Read();
+void printTandRH(HDC1080_MeasurementResolution humidity, HDC1080_MeasurementResolution temperature);
 
 void setup() {
   Serial.begin(9600);
@@ -35,7 +38,7 @@ void setup() {
   pinMode(GPIO_NUM_17,OUTPUT);
 
   pinMode(ONBOARD_LED,OUTPUT);
-  pinMode(GPIO_NUM_26,OUTPUT);
+  pinMode(GPIO_NUM_26,OUTPUT);// nWAKE on GPIO_NUM_26
   digitalWrite(GPIO_NUM_26, LOW);
   pinMode(GPIO_NUM_32,OUTPUT);
   digitalWrite(GPIO_NUM_32, LOW);
@@ -43,9 +46,10 @@ void setup() {
   digitalWrite(GPIO_NUM_12, LOW);
 
   WiFi.mode(WIFI_STA);
-  initGasSensor();
+  //initGasSensor();
   initTempHumiditiSensor();
   initDisplay();
+  pms.init();
 }
  
 void loop() {
@@ -53,8 +57,9 @@ void loop() {
   
   display.clearDisplay();
   display.setCursor(0, 0);
-/*
-  if (ccs811.available()) {
+
+
+/*  if (gasSensor.available()) {
     float temp = gasSensor.calculateTemperature();
     if (gasSensor.readData()) {
       Serial.print("CO2: ");
@@ -73,10 +78,8 @@ void loop() {
   display.print(tempHumiditiSensor.readTemperature());
   display.print("C, RH=");
   display.print(tempHumiditiSensor.readHumidity());
-  display.print("%");
+  display.print("%\n");
   
-
-
 
   Serial.print("\n\ntemp: ");
   Serial.print(tempHumiditiSensor.readTemperature()); 
@@ -85,9 +88,11 @@ void loop() {
   Serial.print("%");
   Serial.print("\n\n");
   
-  printRegister(tempHumiditiSensor.readRegister());
+//  printRegister(tempHumiditiSensor.readRegister());
 
   ccs811Read();
+
+  pmsa003Read();
 
   int nNetworkCount = WiFi.scanNetworks();
 
@@ -121,12 +126,67 @@ void loop() {
   Serial.println('\n');
   
   display.display();
+  
+  //digitalWrite(GPIO_NUM_26, HIGH);
 
   delay(2000);
 }
 
-void ccs811Read() {
+void pmsa003Read() {
+  pms.read();
+  if (pms)
+  { // successfull read
+      // print formatted results
+    display.printf("PM1.0 %2d, \nPM2.5 %2d, \nPM10 %2d [ug/m3]\n",
+                  pms.pm01, pms.pm25, pms.pm10);
 
+    Serial.printf("PM1.0 %2d, PM2.5 %2d, PM10 %2d [ug/m3]\n",
+                  pms.pm01, pms.pm25, pms.pm10);
+
+    if (pms.has_number_concentration()) {
+      Serial.printf("N0.3 %4d, N0.5 %3d, N1.0 %2d, N2.5 %2d, N5.0 %2d, N10 %2d [#/100cc]\n",
+                    pms.n0p3, pms.n0p5, pms.n1p0, pms.n2p5, pms.n5p0, pms.n10p0);
+    }
+
+    if (pms.has_temperature_humidity() || pms.has_formaldehyde()) {
+      Serial.printf("%5.1f °C, %5.1f %%rh, %5.2f mg/m3 HCHO\n",
+                    pms.temp, pms.rhum, pms.hcho);
+    }
+  } else { // something went wrong
+    switch (pms.status)
+    {
+    case pms.OK: // should never come here
+      break;     // included to compile without warnings
+    case pms.ERROR_TIMEOUT:
+      Serial.println(F(PMS_ERROR_TIMEOUT));
+      break;
+    case pms.ERROR_MSG_UNKNOWN:
+      Serial.println(F(PMS_ERROR_MSG_UNKNOWN));
+      break;
+    case pms.ERROR_MSG_HEADER:
+      Serial.println(F(PMS_ERROR_MSG_HEADER));
+      break;
+    case pms.ERROR_MSG_BODY:
+      Serial.println(F(PMS_ERROR_MSG_BODY));
+      break;
+    case pms.ERROR_MSG_START:
+      Serial.println(F(PMS_ERROR_MSG_START));
+      break;
+    case pms.ERROR_MSG_LENGTH:
+      Serial.println(F(PMS_ERROR_MSG_LENGTH));
+      break;
+    case pms.ERROR_MSG_CKSUM:
+      Serial.println(F(PMS_ERROR_MSG_CKSUM));
+      break;
+    case pms.ERROR_PMS_TYPE:
+      Serial.println(F(PMS_ERROR_PMS_TYPE));
+      break;
+    }
+  }
+}
+
+void ccs811Read() {
+/*
   ccs811.begin();
     // Read
   uint16_t eco2, etvoc, errstat, raw;
@@ -151,7 +211,7 @@ void ccs811Read() {
   } else {
     Serial.print("CCS811: errstat="); Serial.print(errstat,HEX); 
     Serial.print("="); Serial.println( ccs811.errstat_str(errstat) ); 
-  }
+  }*/
 }
 
 void initDisplay() {
@@ -170,9 +230,19 @@ void initDisplay() {
 }
 
 void initGasSensor() {
+/*
+  if(!gasSensor.begin()){
+    Serial.println("Failed to start sensor! Please check your wiring.");
+    while(1);
+  }
+
+  // Wait for the sensor to be ready
+  while(!gasSensor.available());
+  */
+  /*
   Serial.println(F("Enable CCS811 - initGasSensor()"));
   // Enable CCS811
-  ccs811.set_i2cdelay(50); // Needed for ESP8266 because it doesn't handle I2C clock stretch correctly
+  //ccs811.set_i2cdelay(50); // Needed for ESP8266 because it doesn't handle I2C clock stretch correctly
   bool ok= ccs811.begin();
   if ( !ok ) {
     Serial.println("setup: CCS811 begin FAILED");
@@ -183,6 +253,7 @@ void initGasSensor() {
   Serial.print("setup: hardware    version: "); Serial.println(ccs811.hardware_version(),HEX);
   Serial.print("setup: bootloader  version: "); Serial.println(ccs811.bootloader_version(),HEX);
   Serial.print("setup: application version: "); Serial.println(ccs811.application_version(),HEX);
+  */
 }
 
 void blinkOnBoardLed(int count) {
@@ -198,7 +269,8 @@ void initTempHumiditiSensor() {
   tempHumiditiSensor.begin(0x40);
  
   HDC1080_Registers reg = tempHumiditiSensor.readRegister();
-
+ 
+  reg.SoftwareReset = 0;
 	reg.Heater = 0;
 	reg.ModeOfAcquisition = 0;
 	tempHumiditiSensor.writeRegister(reg);
@@ -238,4 +310,17 @@ void printRegister(HDC1080_Registers reg) {
 	Serial.print("RH Measurement Resolution: ");
 	Serial.print(reg.HumidityMeasurementResolution, BIN);
 	Serial.println(" (0=14 bit, 01=11 bit, 10=8 bit)");
+}
+
+void printTandRH(HDC1080_MeasurementResolution humidity, HDC1080_MeasurementResolution temperature) {
+	tempHumiditiSensor.setResolution(humidity, temperature);
+
+	HDC1080_Registers reg = tempHumiditiSensor.readRegister();
+	printRegister(reg);
+
+	Serial.print("T=");
+	Serial.print(tempHumiditiSensor.readTemperature());
+	Serial.print("C, RH=");
+	Serial.print(tempHumiditiSensor.readHumidity());
+	Serial.println("%");
 }
