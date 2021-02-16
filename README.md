@@ -2,13 +2,11 @@
 Small air tester based on esp-wroom-32 with sensor: CJMCU-8118, PMSA003, and display OLED 1306.
 
 ## External libraries:
-* https://github.com/adafruit/Adafruit_CCS811
-* https://github.com/maarten-pennings/CCS811
-* https://github.com/adafruit/Adafruit-GFX-Library.git
-* https://github.com/adafruit/Adafruit_SSD1306.git
-* https://github.com/closedcube/ClosedCube_HDC1080_Arduino.git
-* https://github.com/avaldebe/PMserial.git
-* https://github.com/plerup/espsoftwareserial.git
+* https://github.com/maarten-pennings/CCS811 - Gas sensor
+* https://github.com/adafruit/Adafruit-GFX-Library.git - Display
+* https://github.com/adafruit/Adafruit_SSD1306.git - Display
+* https://github.com/closedcube/ClosedCube_HDC1080_Arduino.git - Temperature and humidity sensor
+* https://github.com/avaldebe/PMserial.git - Digital universal particle concentration sensor
 
 ## Electric configuration
 * TP-4056 charger
